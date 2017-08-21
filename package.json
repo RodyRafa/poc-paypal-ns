@@ -1,7 +1,7 @@
 {
-  "name": "node-js-getting-started",
-  "version": "0.2.6",
-  "description": "A sample Node.js app using Express 4",
+  "name": "poc-paypal-ns",
+  "version": "0.1",
+  "description": "Poc PayPal NS",
   "engines": {
     "node": "6.11.1"
   },
@@ -17,10 +17,6 @@
   "devDependencies": {
     "request": "^2.81.0",
     "tape": "^4.7.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/heroku/node-js-getting-started"
   },
   "keywords": [
     "node",
