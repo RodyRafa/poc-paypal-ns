@@ -4,6 +4,43 @@
 <head>
   <% include ../partials/header.ejs %>
     <script src="https://www.paypalobjects.com/api/checkout.js"></script>
+
+    <script>
+      var startPayment = function() {
+        $("#paymentMethodsLog").show()
+                  .removeClass("alert-success")
+                  .removeClass("alert-danger")
+                  .removeClass("alert-warning")
+                  .addClass("alert-info")
+                  .html("Payment started.<br>");
+
+      };
+      var executePayment = function (data) {
+        $("#paymentMethodsLog").append("Payment authorized.<br>");
+        $("#paymentMethodsLog").append("Executing payment...");
+
+        $.ajax({
+          type: "POST",
+          url: EXECUTE_PAYMENT_URL,
+          contentType: "application/json",
+          data: JSON.stringify(data),
+          success: function (data) {
+            console.log(data);
+
+            $("#paymentMethodsLog").append("success.")
+              .removeClass("alert-info")
+              .addClass("alert-success");
+          },
+          error: function (request, status, error) {
+            console.log(status, error);
+
+            $("#paymentMethodsLog").append("error.")
+              .removeClass("alert-info").addClass("alert-danger");
+          }
+        });
+
+      };
+    </script>
 </head>
 
 <body>
@@ -13,15 +50,25 @@
     <div class="container">
       <div class="row">
         <div class="col-md-6">
-          <h2>Pay with PayPal - Server Side</h2>
+          <div class="row">
+            <div class="col-md-6 form-group">
+              <label for="ammount">Ammount</label>
+              <input type="text" class="form-control" id="ammount" value="10.06">
+            </div>
+          </div>
+          <div class="row">
+            <div id="paymentMethodsLog" class="alert alert-info"></div>
+          </div>
+        </div>
+        <div class="col-md-6">
+
+          <h4>Pay with PayPal - Server Side</h4>
 
           <div id="paymentMethods"></div>
-          <div id="paymentMethodsLog" class="alert alert-info"></div>
 
           <script>
-            //var CREATE_PAYMENT_URL = 'https://hidden-beach-33902.herokuapp.com/paypal/create-payment';
-            var CREATE_PAYMENT_URL = 'http://localhost:5000/paypal/create-payment?value=10.05';
-            var EXECUTE_PAYMENT_URL = 'http://localhost:5000/paypal/execute-payment';
+            var CREATE_PAYMENT_URL = window.location.href + 'paypal/create-payment?value=' + $("#ammount").val();
+            var EXECUTE_PAYMENT_URL = window.location.href + 'paypal/execute-payment';
 
             $("#paymentMethodsLog").hide();
 
@@ -36,11 +83,7 @@
 
               env: 'sandbox', // Optional: specify 'sandbox' environment
               payment: function () {
-                $("#paymentMethodsLog").show()
-                  .removeClass("alert-success")
-                  .removeClass("alert-danger")
-                  .addClass("alert-info")
-                  .html("Payment started.<br>");
+                startPayment();
 
                 return paypal.request.post(CREATE_PAYMENT_URL).then(function (data) {
                   console.log(data);
@@ -51,39 +94,21 @@
               onAuthorize: function (data, actions) {
                 console.log(data);
 
-                $("#paymentMethodsLog").append("Payment authorized.<br>");
-                $("#paymentMethodsLog").append("Executing payment...");
-
-                $.ajax({
-                  type: "POST",
-                  url: EXECUTE_PAYMENT_URL,
-                  contentType: "application/json",
-                  data: JSON.stringify(data),
-                  success: function (data) {
-                    console.log(data);
-
-                    $("#paymentMethodsLog").append("success.")
-                      .removeClass("alert-info")
-                      .addClass("alert-success");
-                  },
-                  error: function (request, status, error) {
-                    console.log(status, error);
-
-                    $("#paymentMethodsLog").append("error.")
-                      .removeClass("alert-info").addClass("alert-danger");
-                  }
-                });
+                executePayment(data);
 
                 //return actions.redirect();
               },
               onCancel: function (data, actions) {
+                $("#paymentMethodsLog").append("Payment cancelled.")
+                  .removeClass("alert-info").addClass("alert-warning");
+
                 //return actions.redirect();
               }
             }, '#paymentMethods');
           </script>
-        </div>
-        <div class="col-md-6">
-          <h2>Pay with PayPal - Client Side</h2>
+
+
+          <h4>Pay with PayPal - Client Side</h4>
 
           <div id="paymentMethodsClient"></div>
 
@@ -107,11 +132,14 @@
               commit: false, // Show a 'Pay Now' button
 
               payment: function (data, actions) {
+                startPayment();
+
                 return actions.payment.create({
                   payment: {
+                    intent: 'order',
                     transactions: [
                       {
-                        amount: { total: '10.00', currency: 'BRL' }
+                        amount: { total: $("#ammount").val(), currency: 'MXN' }
                       }
                     ]
                   }
@@ -120,6 +148,8 @@
 
               onAuthorize: function (data, actions) {
                 console.log(data);
+
+                executePayment(data);
                 // return actions.payment.execute().then(function (payment) {
 
                 //   // The payment is complete!

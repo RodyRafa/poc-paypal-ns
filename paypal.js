@@ -6,7 +6,7 @@ router.post('/paypal/create-payment', function (req, res, next) {
 
     console.log(req.query);
 
-    var valor = req.query.value;
+    var value = req.query.value;
 
     performRequest({
         url: 'https://api.sandbox.paypal.com/v1/payments/payment',
@@ -26,7 +26,7 @@ router.post('/paypal/create-payment', function (req, res, next) {
             "transactions": [{
                 "amount":
                 {
-                    "total": valor,
+                    "total": value,
                     "currency": "MXN"
                 },
                 "description": "Order",
