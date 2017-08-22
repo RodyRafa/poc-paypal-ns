@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <% include ../partials/header.ejs %>
+    <script src="https://www.paypalobjects.com/api/checkout.js"></script>
+</head>
+
+<body>
+
+  <% include ../partials/nav.ejs %>
+
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6">
+          <h2>Payment Confirmation</h2>
+          <div id="payment-status"></div>
+
+          <script>
+            var CREATE_PAYMENT_URL = 'http://localhost:5000/paypal/create-payment?value=10.05';
+            var EXECUTE_PAYMENT_URL = 'http://localhost:5000/paypal/confirm-payment?value=10.05';
+          </script>
+
+        </div>
+        <div class="col-md-6">
+        </div>
+      </div>
+      <!-- row -->
+    </div>
+
+    <script>
+            $(function () {
+              console.log("page loaded" + new Date());
+            });
+    </script>
+</body>
+
+
+</html>

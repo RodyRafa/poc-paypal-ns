@@ -10,33 +10,126 @@
 
   <% include ../partials/nav.ejs %>
 
-    <div id="paymentMethods"></div>
-    <script>
-      var CREATE_PAYMENT_URL = 'https://my-store.com/paypal/create-payment';
-      paypal.Button.render({
-        env: 'production', // Optional: specify 'sandbox' environment
-        payment: function () {
-          return paypal.request.post(CREATE_PAYMENT_URL).then(function (data) {
-            return data.paymentID;
-          });
-        },
-        onAuthorize: function (data, actions) {
-          console.log(data);
-
-          return actions.redirect();
-        },
-        onCancel: function (data, actions) {
-          return actions.redirect();
-        }
-      }, '#paymentMethods');
-
-    </script>
-
     <div class="container">
       <div class="row">
         <div class="col-md-6">
+          <h2>Pay with PayPal - Server Side</h2>
+
+          <div id="paymentMethods"></div>
+          <div id="paymentMethodsLog" class="alert alert-info"></div>
+
+          <script>
+            //var CREATE_PAYMENT_URL = 'https://hidden-beach-33902.herokuapp.com/paypal/create-payment';
+            var CREATE_PAYMENT_URL = 'http://localhost:5000/paypal/create-payment?value=10.05';
+            var EXECUTE_PAYMENT_URL = 'http://localhost:5000/paypal/execute-payment';
+
+            $("#paymentMethodsLog").hide();
+
+            paypal.Button.render({
+
+              style: {
+                size: 'medium',
+                color: 'silver',
+                shape: 'pill',
+                label: 'pay'
+              },
+
+              env: 'sandbox', // Optional: specify 'sandbox' environment
+              payment: function () {
+                $("#paymentMethodsLog").show()
+                  .removeClass("alert-success")
+                  .removeClass("alert-danger")
+                  .addClass("alert-info")
+                  .html("Payment started.<br>");
+
+                return paypal.request.post(CREATE_PAYMENT_URL).then(function (data) {
+                  console.log(data);
+
+                  return data.paymentID;
+                });
+              },
+              onAuthorize: function (data, actions) {
+                console.log(data);
+
+                $("#paymentMethodsLog").append("Payment authorized.<br>");
+                $("#paymentMethodsLog").append("Executing payment...");
+
+                $.ajax({
+                  type: "POST",
+                  url: EXECUTE_PAYMENT_URL,
+                  contentType: "application/json",
+                  data: JSON.stringify(data),
+                  success: function (data) {
+                    console.log(data);
+
+                    $("#paymentMethodsLog").append("success.")
+                      .removeClass("alert-info")
+                      .addClass("alert-success");
+                  },
+                  error: function (request, status, error) {
+                    console.log(status, error);
+
+                    $("#paymentMethodsLog").append("error.")
+                      .removeClass("alert-info").addClass("alert-danger");
+                  }
+                });
+
+                //return actions.redirect();
+              },
+              onCancel: function (data, actions) {
+                //return actions.redirect();
+              }
+            }, '#paymentMethods');
+          </script>
         </div>
         <div class="col-md-6">
+          <h2>Pay with PayPal - Client Side</h2>
+
+          <div id="paymentMethodsClient"></div>
+
+          <script>
+            paypal.Button.render({
+
+              env: 'sandbox', // Or 'sandbox'
+
+              client: {
+                sandbox: 'AVmLCuMZM_gmvximW7uQUBKEk8ROPWYz1WgILglrxo7MHCl0mlIHyfsvjWyG2w98JNO3sTO64Lzx04TM',
+                production: 'xxxxxxxxx'
+              },
+
+              style: {
+                size: 'medium',
+                color: 'silver',
+                shape: 'pill',
+                label: 'pay'
+              },
+
+              commit: false, // Show a 'Pay Now' button
+
+              payment: function (data, actions) {
+                return actions.payment.create({
+                  payment: {
+                    transactions: [
+                      {
+                        amount: { total: '10.00', currency: 'BRL' }
+                      }
+                    ]
+                  }
+                });
+              },
+
+              onAuthorize: function (data, actions) {
+                console.log(data);
+                // return actions.payment.execute().then(function (payment) {
+
+                //   // The payment is complete!
+                //   // You can now show a confirmation message to the customer
+                // });
+              }
+
+            }, '#paymentMethodsClient');
+          </script>
+
         </div>
       </div>
       <!-- row -->
@@ -44,5 +137,12 @@
 
 
 </body>
+
+<script>
+            $(function () {
+              console.log("page loaded" + new Date());
+            });
+
+</script>
 
 </html>
