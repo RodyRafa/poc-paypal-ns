@@ -2,45 +2,8 @@
 <html>
 
 <head>
+  <script src="https://www.paypalobjects.com/api/checkout.js"></script>
   <% include ../partials/header.ejs %>
-    <script src="https://www.paypalobjects.com/api/checkout.js"></script>
-
-    <script>
-      var startPayment = function() {
-        $("#paymentMethodsLog").show()
-                  .removeClass("alert-success")
-                  .removeClass("alert-danger")
-                  .removeClass("alert-warning")
-                  .addClass("alert-info")
-                  .html("Payment started.<br>");
-
-      };
-      var executePayment = function (data) {
-        $("#paymentMethodsLog").append("Payment authorized.<br>");
-        $("#paymentMethodsLog").append("Executing payment...");
-
-        $.ajax({
-          type: "POST",
-          url: EXECUTE_PAYMENT_URL,
-          contentType: "application/json",
-          data: JSON.stringify(data),
-          success: function (data) {
-            console.log(data);
-
-            $("#paymentMethodsLog").append("success.")
-              .removeClass("alert-info")
-              .addClass("alert-success");
-          },
-          error: function (request, status, error) {
-            console.log(status, error);
-
-            $("#paymentMethodsLog").append("error.")
-              .removeClass("alert-info").addClass("alert-danger");
-          }
-        });
-
-      };
-    </script>
 </head>
 
 <body>
@@ -53,7 +16,11 @@
           <div class="row">
             <div class="col-md-6 form-group">
               <label for="ammount">Ammount</label>
-              <input type="text" class="form-control" id="ammount" value="10.06">
+              <input type="text" class="form-control" id="ammount">
+            </div>
+            <div class="col-md-6 form-group">
+              <label for="baid">Billing Agreement:</label>
+              <input type="text" class="form-control" id="baid">
             </div>
           </div>
           <div class="row">
@@ -67,17 +34,14 @@
           <div id="paymentMethods"></div>
 
           <script>
-            var CREATE_PAYMENT_URL = window.location.href + 'paypal/create-payment?value=' + $("#ammount").val();
-            var EXECUTE_PAYMENT_URL = window.location.href + 'paypal/execute-payment';
-
             $("#paymentMethodsLog").hide();
 
             paypal.Button.render({
 
               style: {
                 size: 'medium',
-                color: 'silver',
-                shape: 'pill',
+                color: 'blue',
+                shape: 'rect',
                 label: 'pay'
               },
 
@@ -88,13 +52,15 @@
                 return paypal.request.post(CREATE_PAYMENT_URL).then(function (data) {
                   console.log(data);
 
-                  return data.paymentID;
+                  return data.token;
                 });
               },
               onAuthorize: function (data, actions) {
                 console.log(data);
 
-                executePayment(data);
+                createBillingAgreement(data);
+
+                //executePayment(data);
 
                 //return actions.redirect();
               },
@@ -107,72 +73,118 @@
             }, '#paymentMethods');
           </script>
 
-
-          <h4>Pay with PayPal - Client Side</h4>
-
-          <div id="paymentMethodsClient"></div>
-
-          <script>
-            paypal.Button.render({
-
-              env: 'sandbox', // Or 'sandbox'
-
-              client: {
-                sandbox: 'AVmLCuMZM_gmvximW7uQUBKEk8ROPWYz1WgILglrxo7MHCl0mlIHyfsvjWyG2w98JNO3sTO64Lzx04TM',
-                production: 'xxxxxxxxx'
-              },
-
-              style: {
-                size: 'medium',
-                color: 'silver',
-                shape: 'pill',
-                label: 'pay'
-              },
-
-              commit: false, // Show a 'Pay Now' button
-
-              payment: function (data, actions) {
-                startPayment();
-
-                return actions.payment.create({
-                  payment: {
-                    intent: 'order',
-                    transactions: [
-                      {
-                        amount: { total: $("#ammount").val(), currency: 'MXN' }
-                      }
-                    ]
-                  }
-                });
-              },
-
-              onAuthorize: function (data, actions) {
-                console.log(data);
-
-                executePayment(data);
-                // return actions.payment.execute().then(function (payment) {
-
-                //   // The payment is complete!
-                //   // You can now show a confirmation message to the customer
-                // });
-              }
-
-            }, '#paymentMethodsClient');
-          </script>
-
         </div>
       </div>
       <!-- row -->
     </div>
 
+    <script>
+            var CREATE_PAYMENT_URL = window.location.href + 'paypal/create-payment?value=' + $("#ammount").val();
+            var EXECUTE_PAYMENT_URL = window.location.href + 'paypal/execute-payment';
+            var BILLING_AGREEMENT_URL = window.location.href + 'paypal/billing-agreement';
+            var INSTALLMENTS_URL = window.location.href + 'paypal/installments';
 
-</body>
+            var startPayment = function () {
+              $("#paymentMethodsLog").show()
+                .removeClass("alert-success")
+                .removeClass("alert-danger")
+                .removeClass("alert-warning")
+                .addClass("alert-info")
+                .html("Payment started.<br>");
 
-<script>
+            };
+
+            var executePayment = function (data) {
+              $("#paymentMethodsLog").append("Payment authorized.<br>");
+              $("#paymentMethodsLog").append("Executing payment...");
+
+              $.ajax({
+                type: "POST",
+                url: EXECUTE_PAYMENT_URL,
+                contentType: "application/json",
+                data: JSON.stringify(data),
+                success: function (data) {
+                  console.log(data);
+
+                  $("#paymentMethodsLog").append("success.<br>")
+                    .removeClass("alert-info")
+                    .addClass("alert-success");
+                },
+                error: function (request, status, error) {
+                  console.log(status, error);
+
+                  $("#paymentMethodsLog").append("error.<br>")
+                    .removeClass("alert-info").addClass("alert-danger");
+                }
+              });
+            };
+
+            var createBillingAgreement = function (data) {
+              $("#paymentMethodsLog").append("Payment authorized.<br>");
+              $("#paymentMethodsLog").append("Creating billing agreement...");
+
+              $.ajax({
+                type: "POST",
+                url: BILLING_AGREEMENT_URL,
+                contentType: "application/json",
+                data: JSON.stringify(data),
+                success: function (data) {
+                  console.log(data);
+
+                  $("#paymentMethodsLog").append("success.<br>")
+                    .removeClass("alert-info")
+                    .addClass("alert-success");
+
+                  $("#baid").val(data.billingAgreementId).change();
+                },
+                error: function (request, status, error) {
+                  console.log(status, error);
+
+                  $("#paymentMethodsLog").append("error.<br>")
+                    .removeClass("alert-info").addClass("alert-danger");
+                }
+              });
+
+            };
+
+            var loadInstallments = function (value, baId) {
+              console.log('loadInstallments', value, baId);
+
+              $("#paymentMethodsLog").append("Loading installments...");
+
+              $.ajax({
+                type: "POST",
+                url: INSTALLMENTS_URL,
+                contentType: "application/json",
+                data: JSON.stringify({
+                  value: value,
+                  baId: baId
+                }),
+                success: function (data) {
+                  console.log(data);
+
+                  $("#paymentMethodsLog").append("success.");
+                },
+                error: function (request, status, error) {
+                  console.log(status, error);
+
+                  $("#paymentMethodsLog").append("error.")
+                    .removeClass("alert-success").addClass("alert-danger");
+                }
+              });
+            };
+
             $(function () {
               console.log("page loaded" + new Date());
-            });
 
-</script>
+              var randomValue = parseInt(500 + Math.random() * 1000) + "." + parseInt(Math.random() * 99);
+              $("#ammount").val(randomValue);
+
+              $("#baid").on("change", function () {
+                loadInstallments($("#ammount").val(), $("#baid").val());
+              });
+            });
+    </script>
+</body>
 
 </html>
