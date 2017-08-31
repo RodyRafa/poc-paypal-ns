@@ -7,18 +7,19 @@
 </head>
 
 <body>
-
   <% include ../partials/nav.ejs %>
 
     <div class="container">
       <div class="row">
         <div class="col-md-6">
           <div class="row">
-            <div class="col-md-6 form-group">
+            <div class="col-md-12 form-group">
               <label for="ammount">Ammount</label>
               <input type="text" class="form-control" id="ammount">
             </div>
-            <div class="col-md-6 form-group">
+          </div>
+          <div class="row">
+            <div class="col-md-12 form-group">
               <label for="baid">Billing Agreement:</label>
               <input type="text" class="form-control" id="baid">
             </div>
@@ -30,190 +31,232 @@
               </select>
             </div>
           </div>
-          <div class="row">
-            <div id="paymentMethodsLog" class="alert alert-info"></div>
-          </div>
         </div>
         <div class="col-md-6">
+          <div class="row">
+            <br>
+            <div id="paymentMethodsLog" class="alert alert-info"></div>
+          </div>
+          <div class="row">
+            <div id="paypalButton" class="col-md-12">
+              <div id="paymentMethods"></div>
 
-          <h4>Pay with PayPal - Server Side</h4>
+              <script>
+                $("#paymentMethodsLog").hide();
 
-          <div id="paymentMethods"></div>
+                paypal.Button.render({
 
-          <script>
-            $("#paymentMethodsLog").hide();
+                  style: {
+                    size: 'medium',
+                    color: 'blue',
+                    shape: 'rect',
+                    label: 'pay'
+                  },
 
-            paypal.Button.render({
+                  env: 'sandbox', // Optional: specify 'sandbox' environment
+                  payment: function () {
+                    startPayment();
 
-              style: {
-                size: 'medium',
-                color: 'blue',
-                shape: 'rect',
-                label: 'pay'
-              },
+                    return paypal.request.post(CREATE_PAYMENT_URL).then(function (data) {
+                      console.log(data);
 
-              env: 'sandbox', // Optional: specify 'sandbox' environment
-              payment: function () {
-                startPayment();
+                      return data.token;
+                    });
+                  },
+                  onAuthorize: function (data, actions) {
+                    console.log(data);
 
-                return paypal.request.post(CREATE_PAYMENT_URL).then(function (data) {
-                  console.log(data);
-
-                  return data.token;
-                });
-              },
-              onAuthorize: function (data, actions) {
-                console.log(data);
-
-                createBillingAgreement(data);
-
-                //executePayment(data);
-
-                //return actions.redirect();
-              },
-              onCancel: function (data, actions) {
-                $("#paymentMethodsLog").append("Payment cancelled.")
-                  .removeClass("alert-info").addClass("alert-warning");
-
-                //return actions.redirect();
-              }
-            }, '#paymentMethods');
-          </script>
-
+                    createBillingAgreement(data);
+                  },
+                  onCancel: function (data, actions) {
+                    appendLog("<br>PayPal cancelled.");
+                    $("#paymentMethodsLog").removeClass("alert-info").addClass("alert-warning");
+                  }
+                }, '#paymentMethods');
+              </script>
+            </div>
+            <button id="storeButton" class="btn btn-warning btn-lg">Confirm Payment</button>
+          </div>
         </div>
       </div>
-      <!-- row -->
     </div>
 
     <script>
-            var CREATE_PAYMENT_URL = window.location.href + 'paypal/create-payment?value=' + $("#ammount").val();
-            var EXECUTE_PAYMENT_URL = window.location.href + 'paypal/execute-payment';
-            var BILLING_AGREEMENT_URL = window.location.href + 'paypal/billing-agreement';
-            var INSTALLMENTS_URL = window.location.href + 'paypal/installments';
+                var CREATE_PAYMENT_URL = window.location.href + 'paypal/create-payment?value=' + $("#ammount").val();
+                var EXECUTE_PAYMENT_URL = window.location.href + 'paypal/execute-payment';
+                var BILLING_AGREEMENT_URL = window.location.href + 'paypal/billing-agreement';
+                var INSTALLMENTS_URL = window.location.href + 'paypal/installments';
 
-            var startPayment = function () {
-              $("#installments-container").hide();
-              $("#paymentMethodsLog").show()
-                .removeClass("alert-success")
-                .removeClass("alert-danger")
-                .removeClass("alert-warning")
-                .addClass("alert-info")
-                .html("Payment started.<br>");
+                var startPayment = function () {
+                  $("#installments-container").hide();
+                  $("#paymentMethodsLog").show()
+                    .removeClass("alert-success")
+                    .removeClass("alert-danger")
+                    .removeClass("alert-warning")
+                    .addClass("alert-info")
+                    .html("PayPal started.");
 
-            };
+                };
 
-            var executePayment = function (data) {
-              $("#paymentMethodsLog").append("Payment authorized.<br>");
-              $("#paymentMethodsLog").append("Executing payment...");
+                var executePayment = function (data) {
+                  appendLog("<br>Executing payment...");
 
-              $.ajax({
-                type: "POST",
-                url: EXECUTE_PAYMENT_URL,
-                contentType: "application/json",
-                data: JSON.stringify(data),
-                success: function (data) {
-                  console.log(data);
+                  $.ajax({
+                    type: "POST",
+                    url: EXECUTE_PAYMENT_URL,
+                    contentType: "application/json",
+                    data: JSON.stringify(data),
+                    success: function (data) {
+                      console.log(data);
 
-                  $("#paymentMethodsLog").append("success.<br>")
-                    .removeClass("alert-info")
-                    .addClass("alert-success");
-                },
-                error: function (request, status, error) {
-                  console.log(status, error);
+                      appendSuccess();
+                      appendLog(" PaymentID: " + data.paymentID);
+                    },
+                    error: function (request, status, error) {
+                      console.log(status, error);
 
-                  $("#paymentMethodsLog").append("error.<br>")
-                    .removeClass("alert-info").addClass("alert-danger");
-                }
-              });
-            };
-
-            var createBillingAgreement = function (data) {
-              $("#paymentMethodsLog").append("Payment authorized.<br>");
-              $("#paymentMethodsLog").append("Creating billing agreement...");
-
-              $.ajax({
-                type: "POST",
-                url: BILLING_AGREEMENT_URL,
-                contentType: "application/json",
-                data: JSON.stringify(data),
-                success: function (data) {
-                  console.log(data);
-
-                  $("#paymentMethodsLog").append("success.<br>")
-                    .removeClass("alert-info")
-                    .addClass("alert-success");
-
-                  $("#baid").val(data.billingAgreementId).change();
-                },
-                error: function (request, status, error) {
-                  console.log(status, error);
-
-                  $("#paymentMethodsLog").append("error.<br>")
-                    .removeClass("alert-info").addClass("alert-danger");
-                }
-              });
-
-            };
-
-            var loadInstallments = function (value, baId) {
-
-              $("#installments-container").hide();
-              $("#installments").empty();
-
-              console.log('loadInstallments', value, baId);
-
-              $("#paymentMethodsLog").show().append("<br>Loading installments...");
-
-              $.ajax({
-                type: "POST",
-                url: INSTALLMENTS_URL,
-                contentType: "application/json",
-                data: JSON.stringify({
-                  value: value,
-                  baId: baId
-                }),
-                success: function (data) {
-                  console.log(data);
-
-                  $("#paymentMethodsLog").append("success.");
-
-                  var financing_options = data.financing_options[0].qualifying_financing_options;
-
-                  $("#installments-container").show();
-
-                  financing_options.forEach((o, i) => {
-                    console.log(o);
-                    $('#installments').append($('<option>', {
-                      value: o.credit_financing.term,
-                      text: `${o.credit_financing.term}x ${o.monthly_payment.value} ${o.monthly_payment.currency_code} - (total: ${o.total_cost.value} ${o.total_cost.currency_code})`
-                    }));
+                      appendError();
+                    }
                   });
-                },
-                error: function (request, status, error) {
-                  console.log(status, error);
+                };
 
+                var createBillingAgreement = function (data) {
+                  appendLog("<br>PayPal authorized.");
+                  appendLog("<br>Creating billing agreement...");
+
+                  $.ajax({
+                    type: "POST",
+                    url: BILLING_AGREEMENT_URL,
+                    contentType: "application/json",
+                    data: JSON.stringify(data),
+                    success: function (data) {
+                      console.log(data);
+
+                      appendSuccess();
+
+                      $("#baid").val(data.billingAgreementId).change();
+                    },
+                    error: function (request, status, error) {
+                      console.log(status, error);
+
+                      appendError();
+                    }
+                  });
+
+                };
+
+                var loadInstallments = function (value, baId) {
+
+                  $("#installments-container").hide();
+                  $("#installments").empty();
+
+                  console.log('loadInstallments', value, baId);
+
+                  appendLog("<br>Loading installments...");
+
+                  $.ajax({
+                    type: "POST",
+                    url: INSTALLMENTS_URL,
+                    contentType: "application/json",
+                    data: JSON.stringify({
+                      value: value,
+                      baId: baId
+                    }),
+                    success: function (data) {
+                      console.log(data);
+
+                      appendSuccess();
+
+                      var financing_options = data.financing_options[0].qualifying_financing_options;
+
+                      $("#storeButton").show();
+                      $("#installments-container").show();
+
+                      financing_options.forEach((o, i) => {
+                        console.log(o);
+                        $('#installments').append($('<option>', {
+                          value: o.credit_financing.term + '_' + o.monthly_payment.value + '_' + o.monthly_payment.currency_code,
+                          text: `${o.credit_financing.term}x ${o.monthly_payment.value} ${o.monthly_payment.currency_code} - (total: ${o.total_cost.value} ${o.total_cost.currency_code})`
+                        }));
+                      });
+                    },
+                    error: function (request, status, error) {
+                      appendError();
+
+                      switch (request.status) {
+                        case 400:
+                          appendLog(" Invalid billing agreement.");
+                          break;
+                        case 403:
+                          appendLog(" Billing agreement belongs to another merchant.");
+                          break;
+                      }
+                    }
+                  });
+                };
+
+                var appendLog = (html) => {
+                  if ($("#paymentMethodsLog").html() == "") {
+                    if (html.indexOf('<br>') == 0) {
+                      html = html.substr(4);
+                    }
+                  }
+
+                  $("#paymentMethodsLog").show().append(html);
+                }
+
+                var appendSuccess = () => {
+                  $("#paymentMethodsLog").append("success.")
+                    .removeClass("alert-info")
+                    .removeClass("alert-warning")
+                    .removeClass("alert-danger")
+                    .addClass("alert-success");
+                }
+
+                var appendError = () => {
                   $("#paymentMethodsLog").append("error.")
-                    .removeClass("alert-success").addClass("alert-danger");
+                    .removeClass("alert-info")
+                    .removeClass("alert-warning")
+                    .removeClass("alert-success")
+                    .addClass("alert-danger");
                 }
-              });
-            };
 
-            $(function () {
-              console.log("page loaded" + new Date());
+                $(function () {
+                  console.log("page loaded" + new Date());
 
-              $("#installments-container").hide();
+                  $("#storeButton").hide();
+                  $("#paymentMethodsLog").hide();
+                  $("#installments-container").hide();
 
-              var randomValue = parseInt(500 + Math.random() * 1000) + "." + parseInt(Math.random() * 99);
-              $("#ammount").val(randomValue).on("change", function () {
-                if ($("#baid").val() != "") {
-                  $("#baid").change();
-                }
-              });
+                  var randomValue = parseInt(500 + Math.random() * 1000) + "." + parseInt(Math.random() * 99);
+                  $("#ammount").val(randomValue).on("change", function () {
+                    $("#baid").change();
+                  });
 
-              $("#baid").on("change", function () {
-                loadInstallments($("#ammount").val(), $("#baid").val());
-              });
-            });
+                  $("#baid").on("change", function () {
+                    if ($("#baid").val() != "") {
+                      $("#paypalButton").hide();
+
+                      loadInstallments($("#ammount").val(), $("#baid").val());
+                    } else {
+                      $("#paypalButton").show();
+                      $("#storeButton").hide();
+                    }
+                  });
+
+                  $("#storeButton").on("click", function () {
+
+                    var term = $("#installments").find(":selected").val().split('_');
+
+                    executePayment({
+                      value: $("#ammount").val(),
+                      baId: $("#baid").val(),
+                      term: term[0],
+                      term_value: term[1],
+                      currency: term[2]
+                    });
+                  });
+                });
     </script>
 </body>
 

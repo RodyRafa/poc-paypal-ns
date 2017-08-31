@@ -12,6 +12,7 @@ let paypalKeys = {
 };
 
 var bearer;
+var bearerDate;
 
 router.post('/paypal/create-payment', function (req, res, next) {
     console.log("create-payment");
@@ -41,8 +42,8 @@ router.post('/paypal/billing-agreement', function (req, res, next) {
 router.post('/paypal/installments', function (req, res, next) {
     console.log("installments");
 
-    calculatedFinancingOptionsRest(req.body.value, req.body.baId, function (data) {
-        res.json(data);
+    calculatedFinancingOptionsRest(req.body.value, req.body.baId, function (data, statusCode) {
+        res.status(statusCode).json(data);
     });
 
 });
@@ -50,25 +51,14 @@ router.post('/paypal/installments', function (req, res, next) {
 router.post('/paypal/execute-payment', function (req, res, next) {
     console.log("execute-payment");
 
-    var paymentId = req.body.paymentID;
-    var payerId = req.body.payerID;
-    var ecToken = req.body.paymentToken;
+    var value = req.body.value;
+    var baId = req.body.baId;
+    var term = req.body.term;
+    var term_value = req.body.term_value;
+    var currency = req.body.currency;
 
-    performRequest({
-        url: `https://api.sandbox.paypal.com/v1/payments/payment/${paymentId}/execute/`,
-        method: 'post',
-        body: {
-            "payer_id": payerId
-        },
-        json: true
-    }, function (error, response, body) {
-        console.log("execute-payment", error, response.statusCode, body);
-
-        res.json({
-            paymentID: paymentId,
-            ecToken: ecToken,
-            payer: body.payer
-        });
+    createPaymentRest(baId, value, term, term_value, currency, function (data, statusCode) {
+        res.status(statusCode).json(data);
     });
 });
 
@@ -78,7 +68,7 @@ var doRequestWithBearer = function (options, cb) {
 }
 
 var performRequest = function (options, cb) {
-    if (!bearer) {
+    if (!bearer || bearerDate < new Date()) {
         console.log('Acquiring bearer');
 
         request.post({
@@ -92,7 +82,13 @@ var performRequest = function (options, cb) {
             form: { grant_type: 'client_credentials' }
         }, function (error, response, body) {
             console.log("bearer", error, body);
+
             bearer = JSON.parse(body).access_token;
+            bearerDate = new Date();
+            bearerDate.setSeconds(bearerDate.getSeconds() + parseInt(JSON.parse(body).expires_in) / 2);
+
+            console.log("bearer", bearer, bearerDate);
+
             doRequestWithBearer(options, cb);
         });
     } else {
@@ -186,51 +182,73 @@ var performNVPRequest = function (form, cb) {
 
 }
 
-var createPaymentRest = function (value, res) {
+var createPaymentRest = function (baId, value, term, term_value, currency, cb) {
     performRequest({
         url: 'https://api.sandbox.paypal.com/v1/payments/payment',
         method: 'post',
         body: {
-            "intent": "order",
-            "redirect_urls":
-            {
+            "intent": "sale",
+            "redirect_urls": {
                 "return_url": "http://localhost:5000/confirm-payment",
                 "cancel_url": "http://localhost:5000"
             },
-            "payer":
-            {
-                "payment_method": "paypal"
+            "payer": {
+                "payment_method": "paypal",
+                "funding_instruments": [
+                    {
+                        "billing": {
+                            "billing_agreement_id": baId,
+                            "selected_installment_option": {
+                                "term": term,
+                                "monthly_payment": {
+                                    "value": term_value,
+                                    "currency": currency
+                                }
+                            }
+                        }
+                    }
+                ]
             },
-            "experience_profile_id": "XP-FNF4-5Q64-ULDA-2R6L",
             "transactions": [{
-                "amount":
-                {
-                    "total": value,
-                    "currency": "MXN"
+                "amount": {
+                    "currency": currency,
+                    "total": value
                 },
-                "description": "Order",
+                "description": "This is the payment transaction description",
+                "custom": "custom123",
                 "payment_options": {
                     "allowed_payment_method": "IMMEDIATE_PAY"
                 },
                 "item_list": {
                     "shipping_address": {
-                        "recipient_name": "Rodrigo De Presbiteris",
-                        "line1": "Rua Teste 2000",
-                        "city": "São Paulo",
-                        "state": "SP",
-                        "postal_code": "04206-002",
-                        "country_code": "BR"
-                    }
+                        "recipient_name": "Nome Recebedor",
+                        "line1": "Avenida Paulista, 1048",
+                        "line2": "Bela Vista",
+                        "city": "Sao Paulo",
+                        "country_code": "BR",
+                        "postal_code": "01310-100",
+                        "state": "Sao Paulo",
+                        "phone": "911111111"
+                    },
+                    "items": [{
+                        "name": "Item Name",
+                        "description": "Item Description",
+                        "quantity": "1",
+                        "price": "10.00",
+                        "sku": "Item123",
+                        "currency": currency
+                    }]
                 }
-            }]
+            }],
         },
         json: true
     }, function (error, response, body) {
-        console.log("create-payment", error, response.statusCode, body);
+        console.log("create-payment", error, response.statusCode, JSON.stringify(body));
 
-        res.json({
-            paymentID: body.id
-        });
+        cb({
+            paymentID: body.id,
+            state: body.state
+        }, response.statusCode);
     });
 }
 
@@ -255,7 +273,7 @@ var calculatedFinancingOptionsRest = function (value, baId, cb) {
     }, function (error, response, body) {
         console.log("calculatedFinancingOptions", error, response.statusCode, JSON.stringify(body));
 
-        cb(body);
+        cb(body, response.statusCode);
     });
 }
 

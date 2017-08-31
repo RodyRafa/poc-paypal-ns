@@ -18,10 +18,6 @@ app.get('/', function(request, response, next) {
   response.render('pages/index');
 });
 
-app.get('/confirm-payment', function(request, response, next) {
-  response.render('pages/confirm-payment');
-});
-
 app.use(require("./paypal"));
 
 app.listen(app.get('port'), function() {
