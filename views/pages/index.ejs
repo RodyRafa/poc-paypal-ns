@@ -23,6 +23,13 @@
               <input type="text" class="form-control" id="baid">
             </div>
           </div>
+          <div class="row" id="installments-container">
+            <div class="col-md-12 form-group">
+              <label for="ammount">Installments</label>
+              <select class="form-control" id="installments">
+              </select>
+            </div>
+          </div>
           <div class="row">
             <div id="paymentMethodsLog" class="alert alert-info"></div>
           </div>
@@ -85,6 +92,7 @@
             var INSTALLMENTS_URL = window.location.href + 'paypal/installments';
 
             var startPayment = function () {
+              $("#installments-container").hide();
               $("#paymentMethodsLog").show()
                 .removeClass("alert-success")
                 .removeClass("alert-danger")
@@ -148,9 +156,13 @@
             };
 
             var loadInstallments = function (value, baId) {
+
+              $("#installments-container").hide();
+              $("#installments").empty();
+
               console.log('loadInstallments', value, baId);
 
-              $("#paymentMethodsLog").append("Loading installments...");
+              $("#paymentMethodsLog").show().append("<br>Loading installments...");
 
               $.ajax({
                 type: "POST",
@@ -164,6 +176,18 @@
                   console.log(data);
 
                   $("#paymentMethodsLog").append("success.");
+
+                  var financing_options = data.financing_options[0].qualifying_financing_options;
+
+                  $("#installments-container").show();
+
+                  financing_options.forEach((o, i) => {
+                    console.log(o);
+                    $('#installments').append($('<option>', {
+                      value: o.credit_financing.term,
+                      text: `${o.credit_financing.term}x ${o.monthly_payment.value} ${o.monthly_payment.currency_code} - (total: ${o.total_cost.value} ${o.total_cost.currency_code})`
+                    }));
+                  });
                 },
                 error: function (request, status, error) {
                   console.log(status, error);
@@ -177,8 +201,14 @@
             $(function () {
               console.log("page loaded" + new Date());
 
+              $("#installments-container").hide();
+
               var randomValue = parseInt(500 + Math.random() * 1000) + "." + parseInt(Math.random() * 99);
-              $("#ammount").val(randomValue);
+              $("#ammount").val(randomValue).on("change", function () {
+                if ($("#baid").val() != "") {
+                  $("#baid").change();
+                }
+              });
 
               $("#baid").on("change", function () {
                 loadInstallments($("#ammount").val(), $("#baid").val());

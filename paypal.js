@@ -11,6 +11,7 @@ let paypalKeys = {
     "SIGNATURE": "AFcWxV21C7fd0v3bYYYRCpSSRl31A.UPKPM1mHJAroYgTFxSxnEdgNy1"
 };
 
+var bearer;
 
 router.post('/paypal/create-payment', function (req, res, next) {
     console.log("create-payment");
@@ -71,23 +72,32 @@ router.post('/paypal/execute-payment', function (req, res, next) {
     });
 });
 
-var performRequest = function (options, cb) {
-    request.post({
-        url: 'https://api.sandbox.paypal.com/v1/oauth2/token',
-        headers: {
-            'Authorization': paypalRestBasicAuth,
-            'content-type': 'content-type',
-            'accept-language': 'en_US',
-            'accept': 'application/json'
-        },
-        form: { grant_type: 'client_credentials' }
-    }, function (error, response, body) {
-        console.log("bearer", error, body);
-        var bearer = JSON.parse(body).access_token;
+var doRequestWithBearer = function (options, cb) {
+    options.headers = { Authorization: 'Bearer ' + bearer };
+    request(options, cb);
+}
 
-        options.headers = { Authorization: 'Bearer ' + bearer };
-        request(options, cb);
-    });
+var performRequest = function (options, cb) {
+    if (!bearer) {
+        console.log('Acquiring bearer');
+
+        request.post({
+            url: 'https://api.sandbox.paypal.com/v1/oauth2/token',
+            headers: {
+                'Authorization': paypalRestBasicAuth,
+                'content-type': 'content-type',
+                'accept-language': 'en_US',
+                'accept': 'application/json'
+            },
+            form: { grant_type: 'client_credentials' }
+        }, function (error, response, body) {
+            console.log("bearer", error, body);
+            bearer = JSON.parse(body).access_token;
+            doRequestWithBearer(options, cb);
+        });
+    } else {
+        return doRequestWithBearer(options, cb);
+    }
 };
 
 var setExpressCheckout = function (cb) {
@@ -161,7 +171,7 @@ var performNVPRequest = function (form, cb) {
     console.log("==========================");
     console.log("request data", formData);
     console.log("==========================");
-    
+
     request({
         "async": false,
         "crossDomain": true,
