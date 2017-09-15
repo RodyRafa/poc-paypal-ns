@@ -6,9 +6,9 @@ let _ = require('underscore');
 // PRESBA
 let paypalRestBasicAuth = 'Basic QWNPeG84OVhWMkRwT1RqYU83dTVPOTA1N0kzVFBOa0JRbzVfVENnVUpmZEstaFpzLUVXaGZoMW01U0ZHRWZyQzhWUHAzckhYb1E4b205RTE6RUFXbjM5V3hNZ25EQ0ZXX1BFOURkekU1STQ5SEw4cW9IMThkRTZjemdad2ZZcW04Si1EMnJoSnMyM2pRV1FPbWJraXlXWlVKUWEydjVoUEQ=';
 let paypalKeys = {
-    "USER": "rpresb-facilitator-mx_api1.gmail.com",
-    "PWD": "87JXX3EGC47Z2RWE",
-    "SIGNATURE": "AFcWxV21C7fd0v3bYYYRCpSSRl31A.UPKPM1mHJAroYgTFxSxnEdgNy1"
+     "USER": "rpresb-facilitator-mx_api1.gmail.com",
+     "PWD": "87JXX3EGC47Z2RWE",
+     "SIGNATURE": "AFcWxV21C7fd0v3bYYYRCpSSRl31A.UPKPM1mHJAroYgTFxSxnEdgNy1"
 };
 
 var bearer;
@@ -245,8 +245,11 @@ var createPaymentRest = function (baId, value, term, term_value, currency, cb) {
     }, function (error, response, body) {
         console.log("create-payment", error, response.statusCode, JSON.stringify(body));
 
+        var transactionID = body.transactions[0].related_resources[0].sale.id;
+
         cb({
             paymentID: body.id,
+            transactionID: transactionID,
             state: body.state
         }, response.statusCode);
     });

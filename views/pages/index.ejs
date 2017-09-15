@@ -110,7 +110,7 @@
                       console.log(data);
 
                       appendSuccess();
-                      appendLog(" PaymentID: " + data.paymentID);
+                      appendLog("<BR>PaymentID: " + data.paymentID + " - TransactionID: " + data.transactionID);
                     },
                     error: function (request, status, error) {
                       console.log(status, error);
@@ -245,6 +245,7 @@
                   });
 
                   $("#storeButton").on("click", function () {
+                    $("#storeButton").attr('disabled', true);
 
                     var term = $("#installments").find(":selected").val().split('_');
 
@@ -255,6 +256,10 @@
                       term_value: term[1],
                       currency: term[2]
                     });
+
+                    setTimeout(function() {
+                      $("#storeButton").attr('disabled', false);
+                    }, 3000);
                   });
                 });
     </script>
